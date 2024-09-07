@@ -14,8 +14,33 @@ char gpuName[64] = { 0 };
 
 HANDLE hMutex;
 
+bool IsInStartup()
+{
+    HKEY hKey;
+    WCHAR szPath[MAX_PATH];
+    GetModuleFileName(NULL, szPath, MAX_PATH);
+
+    LONG lRes = RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_QUERY_VALUE, &hKey);
+    if (lRes == ERROR_SUCCESS)
+    {
+        WCHAR szValue[MAX_PATH];
+        DWORD dwSize = sizeof(szValue);
+        lRes = RegQueryValueEx(hKey, L"GpuTemperature", NULL, NULL, (LPBYTE)szValue, &dwSize);
+        RegCloseKey(hKey);
+
+        if (lRes == ERROR_SUCCESS && wcscmp(szPath, szValue) == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 void AddToStartup()
 {
+    if (IsInStartup())
+        return;
+
     HKEY hKey;
     LONG lRes = RegCreateKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
         0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL);
@@ -84,7 +109,7 @@ void UpdateTrayIcon()
     HFONT hFontOld = (HFONT)SelectObject(hdcMem, hFont);
 
     TCHAR tempText[32];
-    swprintf_s(tempText, sizeof(tempText) / sizeof(TCHAR), _T("%d°C"), currentTemperature);
+    swprintf_s(tempText, sizeof(tempText) / sizeof(TCHAR), _T("%dÂ°C"), currentTemperature);
     SetTextColor(hdcMem, RGB(255, 255, 255));
     SetBkMode(hdcMem, TRANSPARENT);
     TextOut(hdcMem, 5, 5, tempText, lstrlen(tempText));
@@ -98,7 +123,7 @@ void UpdateTrayIcon()
     nid.uFlags = NIF_ICON | NIF_TIP;
     nid.hIcon = hIcon;
     TCHAR tooltip[256];
-    swprintf_s(tooltip, sizeof(tooltip) / sizeof(TCHAR), _T("GPU: %S\nTemp: %d°C"), gpuName, currentTemperature);
+    swprintf_s(tooltip, sizeof(tooltip) / sizeof(TCHAR), _T("GPU: %S\nTemp: %dÂ°C"), gpuName, currentTemperature);
     lstrcpy(nid.szTip, tooltip);
     Shell_NotifyIcon(NIM_MODIFY, &nid);
 
